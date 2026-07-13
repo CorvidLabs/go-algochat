@@ -1,0 +1,19 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1783963404,
+      "digest": "84ee1d5f09008b15edc9e57df6f0551ccca2829bf345c70cd0906ecf2811e600",
+      "note": "Definition approval for the reviewed scheduling-only correction: governance inputs must run the existing Go compatibility matrix without altering its versions, jobs, commands, packaging, or release behavior."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "0xleif",
+      "timestamp": 1783963476,
+      "digest": "89294d1c6ac0bd592da3677c406aa2f546d624e00f8d4ae13852d7a638f29279",
+      "note": "Closing approval for the exact symmetric path-filter-only correction after strict lifecycle and native build, vet, and race-test verification passed."
+    }
+  ],
+  "reopenings": []
+}

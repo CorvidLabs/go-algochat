@@ -1,6 +1,6 @@
 ---
 id: CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-go-algochat-primitives
-state: verifying
+state: accepted
 type: migration
 base_commit: 457d1da70655729b77581d440f2bfff73723e5ef
 ---

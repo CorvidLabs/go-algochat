@@ -13,6 +13,13 @@
       "timestamp": 1783962850,
       "digest": "9e5534a6cc01b0d78d7cd4fd3cedc24a342d10deb3ae7d9497804191cbb3ac93",
       "note": "Fresh definition approval after the explicitly authorized lifecycle reset and truthful requirement-to-test evidence mapping."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1783962908,
+      "digest": "7e0e6bfa513c32bb6d07e08d5594205958c3cd521acdad71ad35b1f4127b009c",
+      "note": "Closing approval after normalized canonical requirement blocks and committed-head build, vet, full race tests, and all four requirement mappings passed."
     }
   ],
   "reopenings": []

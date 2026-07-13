@@ -5,10 +5,10 @@
   "title": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the Go AlgoChat primitives",
   "description": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the Go AlgoChat primitives",
   "kind": "migration",
-  "state": "implementing",
+  "state": "verifying",
   "base_commit": "457d1da70655729b77581d440f2bfff73723e5ef",
   "created_at": 1783884361,
-  "updated_at": 1783962851,
+  "updated_at": 1783962858,
   "affected_specs": [
     "algochat"
   ],

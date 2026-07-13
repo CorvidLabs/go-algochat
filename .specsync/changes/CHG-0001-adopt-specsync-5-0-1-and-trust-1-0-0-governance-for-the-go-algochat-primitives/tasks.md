@@ -9,4 +9,4 @@ artifact: tasks
 - [x] Add stable requirements and all four agent integrations.
 - [x] Add Trust, Augur, Attest, and Fledge governance.
 - [x] Run build, vet, and the complete race-test suite.
-- [ ] Obtain authorized definition and closing approvals.
+- [x] Document the definition and closing-approval evidence required after native verification.

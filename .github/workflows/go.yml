@@ -8,6 +8,13 @@ on:
       - go.mod
       - go.sum
       - .github/workflows/go.yml
+      - .github/workflows/trust.yml
+      - .attest.json
+      - .augur.toml
+      - ".specsync/**"
+      - "specs/**"
+      - .trust.toml
+      - fledge.toml
   pull_request:
     branches: [main]
     paths:
@@ -15,6 +22,13 @@ on:
       - go.mod
       - go.sum
       - .github/workflows/go.yml
+      - .github/workflows/trust.yml
+      - .attest.json
+      - .augur.toml
+      - ".specsync/**"
+      - "specs/**"
+      - .trust.toml
+      - fledge.toml
 
 concurrency:
   group: go-${{ github.ref }}

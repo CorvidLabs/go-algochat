@@ -1,28 +1,6 @@
----
-module: algochat
-version: 3
-status: active
-files:
-  - blockchain.go
-  - crypto.go
-  - doc.go
-  - envelope.go
-  - models.go
-  - queue.go
-  - signature.go
-  - storage.go
+## MODIFIED
 
-db_tables: []
-depends_on: []
----
-
-# Go AlgoChat Primitives
-
-## Purpose
-
-Provide the existing Go primitives for AlgoChat encryption, envelope encoding, signing, account derivation, message models, offline queues, and in-memory storage while the high-level client remains under development.
-
-## Public API
+### SPEC SECTION Public API
 
 The package exposes the following existing symbols. It does not implement high-level network send, receive, discovery, or transaction orchestration.
 
@@ -152,7 +130,7 @@ The package exposes the following existing symbols. It does not implement high-l
 | `Invalidate` | Remove one cached public key |
 | `PruneExpired` | Remove all expired public keys |
 
-## Invariants
+### SPEC SECTION Invariants
 
 1. Message encryption accepts plaintext up to `MaxPayloadSize`, uses a fresh ephemeral X25519 key pair and nonce, authenticates ciphertext with ChaCha20-Poly1305, and permits the intended recipient or original sender to decrypt with the corresponding private key.
 2. Envelope decoding accepts only the standard version-one protocol header and at least the fixed header plus authentication tag; it copies the remaining bytes as ciphertext and does not independently enforce the encryption-time plaintext limit.
@@ -161,15 +139,7 @@ The package exposes the following existing symbols. It does not implement high-l
 5. Conversation, queue, and in-memory storage operations synchronize shared state and preserve their documented ordering, deduplication, capacity, retry, participant-isolation, missing-key, and expiry behavior.
 6. The Go compatibility matrix and unified Trust gate remain independent blocking workflows, and this migration does not claim the unfinished high-level client is implemented.
 
-## Behavioral Examples
-
-```
-Given two valid AlgoChat accounts and a plaintext within the protocol limit
-When one account encrypts and encodes a message for the other
-Then the recipient can decode and authenticate the original plaintext while an unrelated key cannot
-```
-
-## Error Cases
+### SPEC SECTION Error Cases
 
 | Error | When | Behavior |
 |-------|------|----------|
@@ -180,16 +150,70 @@ Then the recipient can decode and authenticate the original plaintext while an u
 | Full queue | Enqueue would exceed the configured queue capacity | `Enqueue` returns `ErrQueueFull` |
 | Missing stored key | A requested address has no private key | `Retrieve` returns `ErrKeyNotFound` |
 
-## Dependencies
+### REQUIREMENT REQ-algochat-001
 
-- Go 1.25 or newer
-- `golang.org/x/crypto` for Curve25519, ChaCha20-Poly1305, and HKDF primitives
-- Go standard-library Ed25519, synchronization, and time facilities
+The package SHALL derive X25519 keys and encrypt and decrypt version-one AlgoChat payloads with authenticated recipient and sender recovery.
 
-## Change Log
+Acceptance Criteria
+- Reusing the same account seed derives the same X25519 key pair, while ephemeral encryption produces distinct ciphertext and nonce material.
+- Plaintext at `MaxPayloadSize` round-trips for the intended recipient and original sender; larger plaintext, an unrelated private key, or tampered authenticated data returns an error.
+- Reply encryption serializes reply ID and preview context, truncating previews longer than 80 bytes to a 77-byte prefix plus an ellipsis.
+- Key-publish JSON decrypts to no chat content, and ordinary or reply JSON decrypts to the documented `DecryptedContent` fields.
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1 | 2026-07-12 | Initial spec |
-| 2026-07-13 | CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-go-algochat-primitives: Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the Go AlgoChat primitives |
-| 3 | 2026-07-14 | CHG-0003-correct-and-complete-the-go-algochat-canonical-contract-for-full-implementation: Correct and complete the Go AlgoChat canonical contract for full implementation and governance coverage |
+### REQUIREMENT REQ-algochat-002
+
+The package SHALL sign and verify X25519 encryption public keys with Ed25519 and produce deterministic human-readable key fingerprints.
+
+Acceptance Criteria
+- A correctly signed encryption key verifies with its matching Ed25519 public key; a different signing key or encryption key does not verify.
+- Invalid Ed25519 private-key, public-key, and signature lengths return explicit errors.
+- Repeated `Fingerprint` or `KeyFingerprint` calls for the same key return four uppercase hexadecimal groups derived from the first eight SHA-256 bytes.
+
+### REQUIREMENT REQ-algochat-003
+
+Queue and in-memory storage primitives SHALL preserve their configured limits, state transitions, ordering, isolation, retry, missing-key, and expiry behavior.
+
+Acceptance Criteria
+- A send queue defaults non-positive capacity to 100 and non-positive retry limits to three, rejects enqueue at capacity, returns the first pending message, and records sending, sent, pending-retry, or terminal-failed transitions using retry count and maximum retries.
+- Queue removal, sent/failed purges, failed retry, clear, counts, capacity, pending-state queries, and snapshots operate on the matching messages without exposing the backing slice.
+- Message storage deduplicates by message ID per participant, orders by timestamp, filters by rounds strictly greater than the supplied round, and clears messages and sync rounds at global or participant scope.
+- Private-key storage reports `ErrKeyNotFound` for an absent address, and public-key cache retrieval removes expired entries while invalidate, clear, and prune remove their selected entries.
+
+### REQUIREMENT REQ-algochat-004
+
+Repository governance SHALL build, vet, and race-test every Go package while preserving the Go 1.22 through 1.24 compatibility matrix and the independent unified Trust gate.
+
+Acceptance Criteria
+- `go build ./...`, `go vet ./...`, and `go test -v -race -count=1 ./...` complete successfully in the native verification lane.
+- Pull requests and protected-main pushes changing Go sources, module files, canonical specs, SpecSync state, Trust policy inputs, Fledge configuration, or either governance workflow schedule the unchanged Go 1.22, 1.23, and 1.24 matrix.
+- The Trust workflow runs on every pull request and protected-main push with full history, Go 1.25, and the immutable Trust 1.0.0 action commit.
+- Verification does not represent unfinished high-level send, receive, key-discovery, or live-network orchestration as implemented.
+
+## ADDED
+
+### REQUIREMENT REQ-algochat-005
+
+The envelope codec SHALL encode and decode the standard version-one transaction-note layout without claiming a decode-time plaintext-size limit.
+
+Acceptance Criteria
+- Encoding writes version, protocol ID, sender key, ephemeral key, nonce, encrypted sender key, and ciphertext at the documented offsets, and decoding reconstructs those fields.
+- Decoding rejects data shorter than two bytes, unsupported versions, unsupported protocol IDs, and data shorter than `HeaderSize + TagSize`.
+- `IsChatMessage` returns true exactly when at least two bytes contain the supported version and standard protocol ID.
+
+### REQUIREMENT REQ-algochat-006
+
+Conversation models SHALL maintain a synchronized, deduplicated, chronological view of messages and expose deterministic queries without returning the backing message slice.
+
+Acceptance Criteria
+- Append and merge ignore duplicate message IDs and sort newly accepted messages by timestamp.
+- Last-message and direction-specific queries return the expected message or nil, and round/direction filters, lookup, count, highest-round, and clear reflect current content.
+- Send option constructors progressively enable confirmation and indexer waiting while retaining the default ten-round and 30-second timeouts.
+
+### REQUIREMENT REQ-algochat-007
+
+Account constructors and blockchain boundary types SHALL expose the existing synchronous Algod and Indexer contracts without performing network orchestration.
+
+Acceptance Criteria
+- Constructing from a seed preserves the supplied address and Ed25519 public key and stores the deterministically derived X25519 key pair.
+- Constructing from a 64-byte secret key uses bytes 0 through 31 as the seed and bytes 32 through 63 as the Ed25519 public key and produces the same account as direct seed construction.
+- Algod and Indexer interfaces remain dependency boundaries only; no high-level client implementation is claimed.

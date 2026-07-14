@@ -9,7 +9,10 @@ on:
       - go.sum
       - .github/workflows/go.yml
       - .github/workflows/trust.yml
+      - .attest.json
+      - .augur.toml
       - ".specsync/**"
+      - "specs/**"
       - .trust.toml
       - fledge.toml
   pull_request:
@@ -20,7 +23,10 @@ on:
       - go.sum
       - .github/workflows/go.yml
       - .github/workflows/trust.yml
+      - .attest.json
+      - .augur.toml
       - ".specsync/**"
+      - "specs/**"
       - .trust.toml
       - fledge.toml
 

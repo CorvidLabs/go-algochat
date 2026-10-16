@@ -10,7 +10,7 @@ The package SHALL derive X25519 keys and encrypt and decrypt version-one AlgoCha
 
 Acceptance Criteria
 - Reusing the same account seed derives the same X25519 key pair, while ephemeral encryption produces distinct ciphertext and nonce material.
-- Plaintext at `MaxPayloadSize` round-trips for the intended recipient and original sender; larger plaintext, an unrelated private key, or tampered authenticated data returns an error.
+- An 882-byte plaintext encrypts and encodes to 1024 bytes. Plaintext at `MaxPayloadSize` (3954 bytes) round-trips for the intended recipient and original sender and encodes to exactly 4096 bytes. One byte past `MaxPayloadSize` returns `ErrMessageTooLarge` before an envelope is produced. An unrelated private key or tampered authenticated data returns an error.
 - Reply encryption serializes reply ID and preview context, truncating previews longer than 80 bytes to a 77-byte prefix plus an ellipsis.
 - Key-publish JSON decrypts to no chat content, and ordinary or reply JSON decrypts to the documented `DecryptedContent` fields.
 
@@ -78,3 +78,12 @@ Acceptance Criteria
 - Constructing from a seed preserves the supplied address and Ed25519 public key and stores the deterministically derived X25519 key pair.
 - Constructing from a 64-byte secret key uses bytes 0 through 31 as the seed and bytes 32 through 63 as the Ed25519 public key and produces the same account as direct seed construction.
 - Algod and Indexer interfaces remain dependency boundaries only; no high-level client implementation is claimed.
+
+### REQ-algochat-008
+
+The package SHALL price an allowed note as one minimum fee plus the consensus surcharge, and SHALL reject a note larger than `MaxNoteSize` before returning a fee.
+
+Acceptance Criteria
+- `PaymentFee` at minFee 1000 returns 1000 for 1024 bytes, 1098 for 2000 bytes, and 1308 for 4096 bytes.
+- A negative length or 4097 bytes returns `ErrNoteTooLarge`.
+- The scheme component is one minimum fee. This package does not provide a Falcon signer.

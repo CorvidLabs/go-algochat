@@ -7,7 +7,9 @@ import (
 	"time"
 )
 
-// Protocol constants matching AlgoChat v1.0 specification.
+// Protocol constants matching AlgoChat protocol revision 1.2.1.
+// The envelope version byte stays 0x01. Protocol ID 0x02 is reserved;
+// this package does not implement PSK envelopes.
 const (
 	ProtocolVersion    = 0x01
 	ProtocolIDStandard = 0x01
@@ -15,8 +17,9 @@ const (
 	HeaderSize         = 126 // version(1) + protocolId(1) + senderKey(32) + ephemeralKey(32) + nonce(12) + encryptedSenderKey(48)
 	TagSize            = 16  // ChaCha20-Poly1305 authentication tag
 	EncryptedKeySize   = 48  // 32 bytes key + 16 bytes auth tag
-	MaxPayloadSize     = 882
-	MinPayment         = 1000 // microAlgos
+	MaxNoteSize        = 4096
+	MaxPayloadSize     = MaxNoteSize - HeaderSize - TagSize // 3954
+	MinPayment         = 1000                               // microAlgos
 	NonceSize          = 12
 	KeySize            = 32
 )
@@ -55,16 +58,16 @@ type ReplyContext struct {
 
 // Message represents a decrypted chat message.
 type Message struct {
-	ID              string
-	Sender          string
-	Recipient       string
-	Content         string
-	Timestamp       time.Time
-	ConfirmedRound  uint64
-	Direction       MessageDirection
-	ReplyContext    *ReplyContext
-	Amount          uint64
-	Fee             uint64
+	ID               string
+	Sender           string
+	Recipient        string
+	Content          string
+	Timestamp        time.Time
+	ConfirmedRound   uint64
+	Direction        MessageDirection
+	ReplyContext     *ReplyContext
+	Amount           uint64
+	Fee              uint64
 	IntraRoundOffset int
 }
 

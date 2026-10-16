@@ -1,5 +1,33 @@
 package algochat
 
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrNoteTooLarge is returned when a note length is outside the allowed range.
+var ErrNoteTooLarge = errors.New("note exceeds maximum size")
+
+// noteFeeIncludedBytes is the note prefix that costs one minimum fee.
+const noteFeeIncludedBytes = 1024
+
+// PaymentFee returns the microAlgo fee for an allowed note at the given minimum fee.
+// The first 1024 bytes cost one minimum fee. Each later byte adds one ten-thousandth
+// of the minimum fee, rounded up once. This package has no Falcon signer, so the
+// scheme component is one minimum fee.
+func PaymentFee(noteBytes int, minFee uint64) (uint64, error) {
+	if noteBytes < 0 || noteBytes > MaxNoteSize {
+		return 0, fmt.Errorf("%w: %d bytes, max %d", ErrNoteTooLarge, noteBytes, MaxNoteSize)
+	}
+
+	over := noteBytes - noteFeeIncludedBytes
+	if over < 0 {
+		over = 0
+	}
+	surcharge := (uint64(over)*minFee + 9999) / 10000
+	return minFee + surcharge, nil
+}
+
 // SuggestedParams contains blockchain transaction parameters.
 type SuggestedParams struct {
 	Fee         uint64

@@ -2,6 +2,7 @@ package algochat
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -152,8 +153,60 @@ func TestEncryptMessageTooLarge(t *testing.T) {
 
 	largeMessage := strings.Repeat("x", MaxPayloadSize+1)
 	_, err := EncryptMessage(largeMessage, senderKP.PublicKey, recipientKP.PublicKey)
-	if err == nil {
-		t.Error("expected error for oversized message")
+	if !errors.Is(err, ErrMessageTooLarge) {
+		t.Fatalf("expected ErrMessageTooLarge, got %v", err)
+	}
+}
+
+func TestLegacy882ByteMessage(t *testing.T) {
+	senderKP, _ := GenerateEphemeralKeyPair()
+	recipientKP, _ := GenerateEphemeralKeyPair()
+
+	message := strings.Repeat("x", 882)
+	envelope, err := EncryptMessage(message, senderKP.PublicKey, recipientKP.PublicKey)
+	if err != nil {
+		t.Fatalf("EncryptMessage 882 failed: %v", err)
+	}
+
+	encoded := EncodeEnvelope(envelope)
+	if len(encoded) != 1024 {
+		t.Fatalf("882-byte plaintext encoded to %d bytes, want 1024", len(encoded))
+	}
+
+	content, err := DecryptMessage(envelope, recipientKP.PrivateKey, recipientKP.PublicKey)
+	if err != nil {
+		t.Fatalf("DecryptMessage 882 failed: %v", err)
+	}
+	if content.Text != message {
+		t.Fatal("882-byte message round-trip failed")
+	}
+}
+
+func TestMaxPlaintextEncodesToNoteLimit(t *testing.T) {
+	if HeaderSize != 126 || TagSize != 16 || MaxNoteSize != 4096 || MaxPayloadSize != 3954 {
+		t.Fatalf("capacity constants header=%d tag=%d note=%d payload=%d", HeaderSize, TagSize, MaxNoteSize, MaxPayloadSize)
+	}
+
+	senderKP, _ := GenerateEphemeralKeyPair()
+	recipientKP, _ := GenerateEphemeralKeyPair()
+
+	message := strings.Repeat("x", MaxPayloadSize)
+	envelope, err := EncryptMessage(message, senderKP.PublicKey, recipientKP.PublicKey)
+	if err != nil {
+		t.Fatalf("EncryptMessage max plaintext failed: %v", err)
+	}
+
+	encoded := EncodeEnvelope(envelope)
+	if len(encoded) != 4096 {
+		t.Fatalf("max plaintext encoded to %d bytes, want 4096", len(encoded))
+	}
+
+	content, err := DecryptMessage(envelope, recipientKP.PrivateKey, recipientKP.PublicKey)
+	if err != nil {
+		t.Fatalf("DecryptMessage max plaintext failed: %v", err)
+	}
+	if content.Text != message {
+		t.Fatal("max plaintext round-trip failed")
 	}
 }
 

@@ -1,6 +1,6 @@
 ---
 module: algochat
-version: 3
+version: 5
 status: active
 files:
   - blockchain.go
@@ -20,7 +20,7 @@ depends_on: []
 
 ## Purpose
 
-Provide the existing Go primitives for AlgoChat encryption, envelope encoding, signing, account derivation, message models, offline queues, and in-memory storage while the high-level client remains under development.
+Provide the existing Go primitives for AlgoChat encryption, envelope encoding, signing, account derivation, message models, offline queues, and in-memory storage while the high-level client remains under development. Standard plaintext is limited to 3954 bytes so the encoded note is at most 4096 bytes. An allowed note fee is one minimum fee plus the consensus surcharge past 1024 bytes.
 
 ## Public API
 
@@ -31,11 +31,13 @@ The package exposes the following existing symbols. It does not implement high-l
 | `ProtocolVersion` | Version-one envelope byte |
 | `ProtocolIDStandard` | Standard envelope protocol byte |
 | `ProtocolIDPSK` | Reserved pre-shared-key protocol byte |
-| `HeaderSize` | Fixed encoded envelope header size |
-| `TagSize` | ChaCha20-Poly1305 authentication-tag size |
+| `HeaderSize` | Fixed encoded envelope header size, 126 bytes |
+| `TagSize` | ChaCha20-Poly1305 authentication-tag size, 16 bytes |
 | `EncryptedKeySize` | Wrapped symmetric-key size |
-| `MaxPayloadSize` | Maximum plaintext accepted by encryption |
+| `MaxNoteSize` | Maximum allowed transaction note, 4096 bytes |
+| `MaxPayloadSize` | Maximum standard plaintext accepted by encryption, 3954 bytes |
 | `MinPayment` | Minimum payment amount in microAlgos |
+| `PaymentFee` | Fee for an allowed note: one minimum fee plus the rounded surcharge past 1024 bytes |
 | `NonceSize` | AEAD nonce size |
 | `KeySize` | X25519 and symmetric-key size |
 | `Ed25519SignatureSize` | Accepted Ed25519 signature size |
@@ -49,6 +51,7 @@ The package exposes the following existing symbols. It does not implement high-l
 | `StatusFailed` | Terminally failed queue entry |
 | `ErrInvalidSeedLength` | Retained invalid-seed sentinel |
 | `ErrMessageTooLarge` | Encryption plaintext exceeds capacity |
+| `ErrNoteTooLarge` | Note length is negative or greater than `MaxNoteSize` |
 | `ErrDecryptionFailed` | Authenticated decryption failure |
 | `ErrInvalidEnvelope` | Structurally unsupported envelope |
 | `ErrInvalidKeyLength` | Unsupported Ed25519 key length |
@@ -160,6 +163,7 @@ The package exposes the following existing symbols. It does not implement high-l
 4. Account constructors derive the same X25519 key pair from the same 32-byte seed and split a 64-byte Algorand secret key into its seed and Ed25519 public-key halves.
 5. Conversation, queue, and in-memory storage operations synchronize shared state and preserve their documented ordering, deduplication, capacity, retry, participant-isolation, missing-key, and expiry behavior.
 6. The Go compatibility matrix and unified Trust gate remain independent blocking workflows, and this migration does not claim the unfinished high-level client is implemented.
+7. An 882-byte standard plaintext encrypts and encodes to 1024 bytes. A plaintext of `MaxPayloadSize` (3954 bytes) encodes to exactly `MaxNoteSize` (4096 bytes). One additional byte fails in `EncryptMessage` with `ErrMessageTooLarge` before an envelope is returned. `PaymentFee` at minFee 1000 returns 1000, 1098, and 1308 microAlgos for notes of 1024, 2000, and 4096 bytes. A 4097-byte note returns `ErrNoteTooLarge`. The fee scheme is one minimum fee because this package has no Falcon signer. Protocol ID `0x02` stays reserved and does not add a PSK payload limit.
 
 ## Behavioral Examples
 
@@ -169,12 +173,19 @@ When one account encrypts and encodes a message for the other
 Then the recipient can decode and authenticate the original plaintext while an unrelated key cannot
 ```
 
+```
+Given a 3954-byte plaintext and a minimum fee of 1000 microAlgos
+When the message is encrypted, encoded, and priced with PaymentFee
+Then the note is 4096 bytes and the fee is 1308 microAlgos
+```
+
 ## Error Cases
 
 | Error | When | Behavior |
 |-------|------|----------|
 | Invalid envelope | The note is too short or has an unsupported version or protocol ID | `DecodeEnvelope` returns an `ErrInvalidEnvelope`-wrapped error |
-| Oversized message | Plaintext passed to encryption exceeds `MaxPayloadSize` | `EncryptMessage` returns an `ErrMessageTooLarge`-wrapped error |
+| Oversized message | Plaintext passed to encryption exceeds `MaxPayloadSize` | `EncryptMessage` returns an `ErrMessageTooLarge`-wrapped error before an envelope is returned |
+| Note too large | `PaymentFee` is asked for a negative length or a note longer than `MaxNoteSize` | `PaymentFee` returns an `ErrNoteTooLarge`-wrapped error |
 | Wrong or tampered key material | Authenticated decryption cannot validate ciphertext or the encrypted sender key | Decryption returns an `ErrDecryptionFailed`-wrapped error |
 | Invalid signature input | An Ed25519 key or signature has an unsupported length | Signing or verification returns the corresponding length error |
 | Full queue | Enqueue would exceed the configured queue capacity | `Enqueue` returns `ErrQueueFull` |
@@ -193,3 +204,5 @@ Then the recipient can decode and authenticate the original plaintext while an u
 | 1 | 2026-07-12 | Initial spec |
 | 2026-07-13 | CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-go-algochat-primitives: Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the Go AlgoChat primitives |
 | 3 | 2026-07-14 | CHG-0003-correct-and-complete-the-go-algochat-canonical-contract-for-full-implementation: Correct and complete the Go AlgoChat canonical contract for full implementation and governance coverage |
+| 4 | 2026-10-16 | Raise the note ceiling to 4096 bytes. Max standard plaintext is 3954. PaymentFee adds the note surcharge to one minimum fee |
+

@@ -1,8 +1,34 @@
 package algochat
 
 import (
+	"errors"
 	"testing"
 )
+
+func TestPaymentFeeNoteSurcharge(t *testing.T) {
+	cases := []struct {
+		noteBytes int
+		want      uint64
+	}{
+		{1024, 1000},
+		{2000, 1098},
+		{4096, 1308},
+	}
+
+	for _, tc := range cases {
+		got, err := PaymentFee(tc.noteBytes, 1000)
+		if err != nil {
+			t.Fatalf("PaymentFee(%d, 1000): %v", tc.noteBytes, err)
+		}
+		if got != tc.want {
+			t.Errorf("PaymentFee(%d, 1000) = %d, want %d", tc.noteBytes, got, tc.want)
+		}
+	}
+
+	if _, err := PaymentFee(4097, 1000); !errors.Is(err, ErrNoteTooLarge) {
+		t.Fatalf("expected ErrNoteTooLarge for 4097 bytes, got %v", err)
+	}
+}
 
 func TestNewChatAccountFromSeed(t *testing.T) {
 	seed := [KeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,

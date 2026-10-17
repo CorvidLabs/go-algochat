@@ -1,3 +1,5 @@
+> **This repository has moved.** Development continues in [CorvidLabs/algochat](https://github.com/CorvidLabs/algochat) in the [`go/`](https://github.com/CorvidLabs/algochat/tree/main/go) directory. This copy stays public so existing package versions keep resolving. Open new work in the monorepo.
+
 # go-algochat
 
 🔐 Go implementation of the AlgoChat protocol for encrypted messaging on Algorand.
